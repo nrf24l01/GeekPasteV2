@@ -339,7 +339,10 @@
                 var resubmitLink = document.getElementById('submission-resubmit-link');
                 var slotMachine = document.getElementById('submission-slot-machine');
                 var slotReels = slotMachine ? Array.prototype.slice.call(slotMachine.querySelectorAll('.slot-reel')) : [];
+                var slotWrap = document.getElementById('submission-slot-wrap');
                 var slotSpinTimers = [];
+                var slotStopTimers = [];
+                var slotSpinStartedAt = 0;
                 var slotSymbols = [
                     {name: 'ChatGPT', src: '/static/ai-logos/chatgpt.png'},
                     {name: 'Claude', src: '/static/ai-logos/claude.png'},
@@ -360,6 +363,27 @@
                     slotReels[reelIndex].setAttribute('data-symbol-name', symbol.name);
                 }
 
+                function ensureReelStrip(reel, reelIndex) {
+                    if (!reel || reel.querySelector('.slot-strip')) {
+                        return;
+                    }
+
+                    var strip = document.createElement('div');
+                    strip.className = 'slot-strip';
+                    reel.style.setProperty('--slot-duration', (0.24 + (reelIndex * 0.05)) + 's');
+                    reel.style.setProperty('--slot-delay', (-0.08 * reelIndex) + 's');
+                    for (var round = 0; round < 3; round++) {
+                        for (var i = 0; i < slotSymbols.length; i++) {
+                            var symbolIndex = (slotSymbols.length - 1 - i + reelIndex + round) % slotSymbols.length;
+                            var stripImage = document.createElement('img');
+                            stripImage.src = slotSymbols[symbolIndex].src;
+                            stripImage.alt = slotSymbols[symbolIndex].name;
+                            strip.appendChild(stripImage);
+                        }
+                    }
+                    reel.appendChild(strip);
+                }
+
                 function setSlotCombo(combo) {
                     if (!slotReels.length || !combo || combo.length !== slotReels.length) {
                         return;
@@ -375,33 +399,64 @@
                         return;
                     }
 
-                    stopSlotSpin(getSlotComboByScore(0), true);
+                    for (var stopIndex = 0; stopIndex < slotStopTimers.length; stopIndex++) {
+                        if (slotStopTimers[stopIndex]) {
+                            clearTimeout(slotStopTimers[stopIndex]);
+                            slotStopTimers[stopIndex] = null;
+                        }
+                    }
+
+                    if (slotWrap) {
+                        slotWrap.classList.add('is-overlay-active');
+                    }
+                    slotSpinStartedAt = Date.now();
+
                     for (var i = 0; i < slotReels.length; i++) {
                         (function (reelIndex) {
+                            ensureReelStrip(slotReels[reelIndex], reelIndex);
                             slotReels[reelIndex].classList.add('is-spinning');
+                            if (slotSpinTimers[reelIndex]) {
+                                clearInterval(slotSpinTimers[reelIndex]);
+                            }
                             slotSpinTimers[reelIndex] = setInterval(function () {
                                 var randomIndex = Math.floor(Math.random() * slotSymbols.length);
                                 setReelSymbol(reelIndex, randomIndex);
-                            }, 110 + (reelIndex * 40));
+                            }, 42 + (reelIndex * 10));
                         })(i);
                     }
                 }
 
-                function stopSlotSpin(targetCombo, immediate) {
+                function stopSlotSpin(targetCombo, immediate, keepOverlay) {
                     if (!slotReels.length) {
                         return;
                     }
 
+                    var minSpinDelay = 0;
+                    if (!immediate && slotSpinStartedAt) {
+                        minSpinDelay = Math.max(0, 2000 - (Date.now() - slotSpinStartedAt));
+                    }
+
+                    for (var stopIndex = 0; stopIndex < slotStopTimers.length; stopIndex++) {
+                        if (slotStopTimers[stopIndex]) {
+                            clearTimeout(slotStopTimers[stopIndex]);
+                            slotStopTimers[stopIndex] = null;
+                        }
+                    }
+
                     for (var i = 0; i < slotReels.length; i++) {
                         (function (reelIndex) {
-                            var stopDelay = immediate ? 0 : (220 + (reelIndex * 220));
-                            window.setTimeout(function () {
+                            var stopDelay = immediate ? 0 : (minSpinDelay + 220 + (reelIndex * 220));
+                            slotStopTimers[reelIndex] = window.setTimeout(function () {
                                 if (slotSpinTimers[reelIndex]) {
                                     clearInterval(slotSpinTimers[reelIndex]);
                                     slotSpinTimers[reelIndex] = null;
                                 }
                                 setReelSymbol(reelIndex, targetCombo[reelIndex]);
                                 slotReels[reelIndex].classList.remove('is-spinning');
+                                if (reelIndex === slotReels.length - 1 && slotWrap && !keepOverlay) {
+                                    slotWrap.classList.remove('is-overlay-active');
+                                }
+                                slotStopTimers[reelIndex] = null;
                             }, stopDelay);
                         })(i);
                     }

@@ -390,6 +390,18 @@ textarea:focus {
     padding: 12px 14px 0;
 }
 
+.submission-slot-wrap.is-overlay-active {
+    position: fixed;
+    inset: 0;
+    z-index: 1055;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(1px);
+}
+
 .submission-slot-machine {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -401,20 +413,32 @@ textarea:focus {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+.submission-slot-wrap.is-overlay-active .submission-slot-machine {
+    width: min(720px, 94vw);
+    gap: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    border-color: #c6d4e4;
+    box-shadow: 0 18px 52px rgba(15, 23, 42, 0.24);
+}
+
 .slot-reel {
     min-height: 68px;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     border: 1px solid #d5dee8;
     border-radius: 10px;
     background: #ffffff;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 3px 10px rgba(31, 41, 55, 0.08);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    perspective: 180px;
 }
 
 .slot-reel.is-spinning {
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.02);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 6px 14px rgba(31, 41, 55, 0.16);
 }
 
@@ -424,6 +448,50 @@ textarea:focus {
     object-fit: contain;
     user-select: none;
     pointer-events: none;
+    will-change: transform, opacity, filter;
+}
+
+.slot-reel.is-spinning .slot-logo {
+    opacity: 0;
+}
+
+.slot-strip {
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    will-change: transform;
+}
+
+.slot-strip img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.slot-reel.is-spinning .slot-strip {
+    display: flex;
+    animation: slot-strip-roll var(--slot-duration, 0.3s) linear infinite;
+    animation-delay: var(--slot-delay, 0s);
+}
+
+.slot-reel.is-spinning .slot-strip img {
+    filter: blur(0.45px);
+}
+
+@keyframes slot-strip-roll {
+    from {
+        transform: translateY(-240px);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 @media (max-width: 560px) {
@@ -438,6 +506,11 @@ textarea:focus {
     }
 
     .slot-logo {
+        width: 34px;
+        height: 34px;
+    }
+
+    .slot-strip img {
         width: 34px;
         height: 34px;
     }
